@@ -5,6 +5,8 @@ description = "Document AI Suite: YOLO+OCR layout extraction and the universal c
 requires-python = ">=3.10"
 dependencies = [
     "pydantic>=2.0",
+    "pytesseract>=0.3.10",
+    "Pillow>=10.0",
 ]
 
 [project.optional-dependencies]
