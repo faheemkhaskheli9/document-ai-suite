@@ -24,11 +24,14 @@ the same `ExtractionResult`, so nothing downstream branches on which one ran.
 - `layout_ocr` feature app — ported from `document-ai-yolo-ocr`: YOLO layout
   detection (`detection.py`'s `LayoutDetector`), per-region OCR
   (`fields.py`'s `extract_fields_from_regions`, via `document_core.ocr`;
-  a region that fails OCR is flagged with `ocr_error`, never dropped), field
-  mapping to structured JSON; `services.py`'s `run_layout_ocr` chains
-  detect -> per-region OCR and persists both artifacts per document via
-  `document_core.storage`'s `save_artifact`/`load_artifact`; registered as
-  the `layout_ocr` extraction backend
+  a region that fails OCR is flagged with `ocr_error`, never dropped),
+  invoice/contract field mapping to the shared `ExtractionResult` schema
+  (`mapping.py`, regex heuristics for invoice number/date/total/vendor, no
+  trained NER model); `services.py`'s `run_layout_ocr` chains detect ->
+  per-region OCR and persists both artifacts per document via
+  `document_core.storage`'s `save_artifact`/`load_artifact`; `backend.py`
+  registers the whole pipeline as the `"layout_ocr"` `document_core.extraction`
+  backend (`LayoutOcrConfig.ready()` triggers the registration)
 - `classify_review` feature app — ported from `intelligent-document-processing`:
   document classifier, validation rules, confidence scoring, human-review
   queue; consumes whichever extraction backend's `ExtractionResult` it's
