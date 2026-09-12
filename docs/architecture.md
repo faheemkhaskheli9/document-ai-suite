@@ -21,6 +21,14 @@ the same `ExtractionResult`, so nothing downstream branches on which one ran.
   per-region text recognition), extraction backend wrapper (`extraction.py`,
   whole-document structured output — includes the `llm_vision` Claude-vision
   backend today), structured JSON schema
+- `documents` app's document detail page — lets the user pick `layout_ocr` or
+  `llm_vision` per run (`ExtractionRunForm`, choices read from the live
+  `document_core.extraction` registry) and calls `extract_fields(backend_key,
+  ...)` only, never a concrete engine; the chosen `backend_key` is persisted
+  alongside the `ExtractionResult` (`documents.services.run_extraction`'s
+  `extraction_result` artifact) so results stay traceable to how they were
+  produced, and the page shows the "self-reported confidence" caveat only
+  when `llm_vision` was the engine used
 - `layout_ocr` feature app — ported from `document-ai-yolo-ocr`: YOLO layout
   detection (`detection.py`'s `LayoutDetector`), per-region OCR
   (`fields.py`'s `extract_fields_from_regions`, via `document_core.ocr`;

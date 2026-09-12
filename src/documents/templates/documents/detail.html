@@ -8,9 +8,38 @@
     <tr><th>Content hash</th><td><code>{{ record.content_hash }}</code></td></tr>
     <tr><th>Document id</th><td><code>{{ record.id }}</code></td></tr>
   </table>
-  <p class="muted">
-    Layout detection, OCR, and structured-field extraction for this document
-    land with the Layout + OCR feature app (Phase 2).
-  </p>
+  <h2>Run extraction</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ extraction_form.as_p }}
+    <button type="submit">Run extraction</button>
+  </form>
+
+  {% if extraction %}
+    <h2>Extraction result</h2>
+    <p>Engine used: <strong>{{ extraction.backend_key }}</strong></p>
+    {% if extraction.backend_key == "llm_vision" %}
+      <p class="muted">
+        Confidence values below are the model's own self-report, not a
+        calibrated OCR probability like the layout_ocr engine's.
+      </p>
+    {% endif %}
+    <p>Status: {{ extraction.result.status }}</p>
+    <table>
+      <tr><th>Field</th><th>Value</th><th>Confidence</th></tr>
+      {% for field in extraction.result.fields %}
+        <tr>
+          <td>{{ field.name }}</td>
+          <td>{{ field.value }}</td>
+          <td>{{ field.confidence }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="3">No fields extracted.</td></tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p class="muted">No extraction has been run for this document yet.</p>
+  {% endif %}
+
   <p><a href="{% url 'documents:list' %}">&larr; Back to my documents</a></p>
 {% endblock %}

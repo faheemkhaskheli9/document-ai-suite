@@ -1,12 +1,14 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import redirect, render
 
+from document_core.extraction import ExtractionBackendError
 from document_core.storage import DocumentValidationError
 
-from .forms import DocumentUploadForm
-from .services import get_document_store, owner_id
+from .forms import DocumentUploadForm, ExtractionRunForm
+from .services import get_document_store, get_extraction_result, owner_id, run_extraction
 
 
 @login_required
@@ -50,4 +52,28 @@ def detail(request, doc_id: str):
     # reveal that a given id belongs to another user.
     if record is None or record.owner != owner_id(request.user):
         raise Http404("No such document.")
-    return render(request, "documents/detail.html", {"record": record})
+
+    if request.method == "POST":
+        form = ExtractionRunForm(
+            request.POST, initial_backend_key=settings.DEFAULT_EXTRACTION_BACKEND
+        )
+        if form.is_valid():
+            backend_key = form.cleaned_data["backend_key"]
+            try:
+                run_extraction(doc_id, backend_key)
+            except ExtractionBackendError as exc:
+                # Loud, specific failure surfaced back to the user -- never a
+                # silent no-op that leaves them thinking extraction ran.
+                messages.error(request, f"Extraction failed ({backend_key}): {exc}")
+            else:
+                messages.success(request, f"Extraction complete ({backend_key}).")
+            return redirect("documents:detail", doc_id=doc_id)
+    else:
+        form = ExtractionRunForm(initial_backend_key=settings.DEFAULT_EXTRACTION_BACKEND)
+
+    extraction = get_extraction_result(doc_id)
+    return render(
+        request,
+        "documents/detail.html",
+        {"record": record, "extraction_form": form, "extraction": extraction},
+    )

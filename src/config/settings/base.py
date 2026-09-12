@@ -123,6 +123,12 @@ DOCUMENT_STORE_ROOT = env(
 # default (feature apps landing in later phases will read this too).
 DEFAULT_OCR_BACKEND = env("DEFAULT_OCR_BACKEND", default="tesseract")
 
+# Which document_core.extraction backend key documents/forms.ExtractionRunForm
+# preselects: "layout_ocr" (YOLO layout + OCR pipeline) or "llm_vision"
+# (direct multimodal-LLM extraction). The user can still override per run
+# (issue #14).
+DEFAULT_EXTRACTION_BACKEND = env("DEFAULT_EXTRACTION_BACKEND", default="layout_ocr")
+
 # Path to a trained YOLO layout-detection checkpoint for `layout_ocr`'s
 # `LayoutDetector` (issue #4). No checkpoint ships with this repo -- left
 # unset (default) means `LayoutDetector` raises `LayoutDetectionUnavailable`
