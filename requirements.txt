@@ -2,6 +2,8 @@ pydantic>=2.0
 pytesseract>=0.3.10
 Pillow>=10.0
 anthropic>=1.5.0,<2.0   # multimodal-LLM extraction backend (document_core/extraction.py)
+PyYAML>=6.0             # layout_ocr/dataset.py's dataset.yaml writer
+ultralytics>=8.2        # layout_ocr/detection.py's YOLO layout-detection engine
 
 # Django web app (README.md Section 3/9)
 Django>=5.1,<6.0

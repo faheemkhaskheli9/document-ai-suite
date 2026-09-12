@@ -22,8 +22,10 @@ the same `ExtractionResult`, so nothing downstream branches on which one ran.
   whole-document structured output — includes the `llm_vision` Claude-vision
   backend today), structured JSON schema
 - `layout_ocr` feature app — ported from `document-ai-yolo-ocr`: YOLO layout
-  detection, per-region OCR (via `document_core.ocr`), field mapping to
-  structured JSON; registered as the `layout_ocr` extraction backend
+  detection (`detection.py`'s `LayoutDetector`, persisted per document via
+  `document_core.storage`'s `save_artifact`/`load_artifact`), per-region OCR
+  (via `document_core.ocr`), field mapping to structured JSON; registered as
+  the `layout_ocr` extraction backend
 - `classify_review` feature app — ported from `intelligent-document-processing`:
   document classifier, validation rules, confidence scoring, human-review
   queue; consumes whichever extraction backend's `ExtractionResult` it's

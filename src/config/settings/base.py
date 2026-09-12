@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "accounts",
     "dashboard",
     "documents",
+    "layout_ocr",
 ]
 
 MIDDLEWARE = [
@@ -121,6 +122,13 @@ DOCUMENT_STORE_ROOT = env(
 # Which OCR backend `document_core.ocr.extract_text` is called with by
 # default (feature apps landing in later phases will read this too).
 DEFAULT_OCR_BACKEND = env("DEFAULT_OCR_BACKEND", default="tesseract")
+
+# Path to a trained YOLO layout-detection checkpoint for `layout_ocr`'s
+# `LayoutDetector` (issue #4). No checkpoint ships with this repo -- left
+# unset (default) means `LayoutDetector` raises `LayoutDetectionUnavailable`
+# rather than fabricating detections; see docs/architecture.md for the
+# dataset-prep/training path that produces one.
+LAYOUT_MODEL_WEIGHTS = env("LAYOUT_MODEL_WEIGHTS", default="")
 
 LOGGING = {
     "version": 1,

@@ -78,6 +78,25 @@ def test_set_status_unknown_id_raises_keyerror(store):
         store.set_status("does-not-exist", "done")
 
 
+def test_save_and_load_artifact_round_trips(store):
+    record = store.store(b"content", "a.pdf", owner="alice")
+    store.save_artifact(record.id, "layout_regions", {"regions": [{"class_name": "table"}]})
+
+    assert store.load_artifact(record.id, "layout_regions") == {
+        "regions": [{"class_name": "table"}]
+    }
+
+
+def test_load_artifact_not_yet_produced_returns_none(store):
+    record = store.store(b"content", "a.pdf", owner="alice")
+    assert store.load_artifact(record.id, "layout_regions") is None
+
+
+def test_save_artifact_unknown_document_raises_keyerror(store):
+    with pytest.raises(KeyError, match="No such document"):
+        store.save_artifact("does-not-exist", "layout_regions", {"regions": []})
+
+
 def test_get_after_interrupted_write_sees_nothing_or_complete_record(store, monkeypatch):
     """Rule 1/2: a write interrupted mid-way must never leave a record that
     looks stored but is truncated/half-written."""

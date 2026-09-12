@@ -133,6 +133,28 @@ class DocumentStore:
         )
         return record
 
+    def save_artifact(self, doc_id: str, name: str, data: dict) -> Path:
+        """Persist a JSON artifact a feature app derives from a document
+        (e.g. `layout_ocr`'s detected regions) alongside its `record.json`,
+        atomically. Shared here rather than duplicated per feature app since
+        every derived-artifact write needs the same "never leave a truncated
+        file" guarantee as the original upload."""
+        doc_dir = self._doc_dir(doc_id)
+        if not doc_dir.exists():
+            raise KeyError(f"No such document: {doc_id}")
+        path = doc_dir / f"{name}.json"
+        self._atomic_write(path, json.dumps(data, indent=2).encode("utf-8"))
+        return path
+
+    def load_artifact(self, doc_id: str, name: str) -> dict | None:
+        """Read back an artifact written by `save_artifact`, or `None` if it
+        hasn't been produced yet (distinct from the document itself not
+        existing, which callers should check via `get()` first)."""
+        path = self._doc_dir(doc_id) / f"{name}.json"
+        if not path.exists():
+            return None
+        return json.loads(path.read_text(encoding="utf-8"))
+
     @staticmethod
     def _atomic_write(path: Path, content: bytes) -> None:
         """Write to a temp file in the same directory, then rename onto
