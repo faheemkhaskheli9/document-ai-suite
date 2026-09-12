@@ -29,3 +29,9 @@ models/*.engine
 
 # Docker
 *.log
+
+# Django
+db.sqlite3
+staticfiles/
+media/
+data/documents/

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ record.filename }} - Document AI Suite{% endblock %}
+{% block content %}
+  <h1>{{ record.filename }}</h1>
+  <table>
+    <tr><th>Status</th><td><span class="status">{{ record.status }}</span></td></tr>
+    <tr><th>Uploaded</th><td>{{ record.uploaded_at }}</td></tr>
+    <tr><th>Content hash</th><td><code>{{ record.content_hash }}</code></td></tr>
+    <tr><th>Document id</th><td><code>{{ record.id }}</code></td></tr>
+  </table>
+  <p class="muted">
+    Layout detection, OCR, and structured-field extraction for this document
+    land with the Layout + OCR feature app (Phase 2).
+  </p>
+  <p><a href="{% url 'documents:list' %}">&larr; Back to my documents</a></p>
+{% endblock %}

@@ -5,26 +5,43 @@
 ```text
 Dashboard (pick a feature or run the full pipeline) ->
 Document -> Classification (scanned vs digital, type) ->
-YOLO Layout Detection -> OCR (per detected region) -> Field Mapping (structured JSON) ->
-Validation + Confidence Scoring -> Auto-Accept or Human Review Queue
+  [layout_ocr engine: YOLO Layout Detection -> OCR (per detected region) -> Field Mapping]
+  [llm_vision engine: multimodal LLM reads the page, returns structured fields directly]
+  -> Validation + Confidence Scoring -> Auto-Accept or Human Review Queue
 ```
+
+`layout_ocr` and `llm_vision` are alternative `document_core.extraction`
+backends, chosen per run — see `document_core/extraction.py`'s docstring for
+the two-shape contract (pipeline backend vs. direct backend). Both produce
+the same `ExtractionResult`, so nothing downstream branches on which one ran.
 
 ## Components
 
-- `document_core` — shared upload/storage, OCR backend wrapper, structured
-  JSON schema
+- `document_core` — shared upload/storage, OCR backend wrapper (`ocr.py`,
+  per-region text recognition), extraction backend wrapper (`extraction.py`,
+  whole-document structured output — includes the `llm_vision` Claude-vision
+  backend today), structured JSON schema
 - `layout_ocr` feature app — ported from `document-ai-yolo-ocr`: YOLO layout
-  detection, per-region OCR, field mapping to structured JSON
+  detection, per-region OCR (via `document_core.ocr`), field mapping to
+  structured JSON; registered as the `layout_ocr` extraction backend
 - `classify_review` feature app — ported from `intelligent-document-processing`:
   document classifier, validation rules, confidence scoring, human-review
-  queue
-- `full_pipeline` mode — chains `layout_ocr` output into `classify_review`'s
-  validation/confidence/review-routing stage
+  queue; consumes whichever extraction backend's `ExtractionResult` it's
+  given, unaware of which one produced it
+- `full_pipeline` mode — chains the selected extraction backend's output into
+  `classify_review`'s validation/confidence/review-routing stage
 
 ## Design Notes
 
-- Registry pattern for feature apps (mirrors `medical-imaging-suite`'s
-  `BaseImagingTask` / `@register_task`).
+- Registry pattern for feature apps *and* for backends one layer below them
+  (OCR engines in `ocr.py`, extraction engines in `extraction.py`) — mirrors
+  `medical-imaging-suite`'s `BaseImagingTask` / `@register_task`.
+- `llm_vision` calls the Anthropic API (`anthropic` SDK) with
+  `output_config`'s JSON-schema structured output so the response is
+  guaranteed syntactically valid — the backend still validates the *content*
+  (via `pydantic`) before trusting it, since a 200 response only guarantees
+  shape, not correctness. Model confidence there is a self-report, not a
+  calibrated probability like Tesseract's per-word confidence.
 - Reuse `document-ai-yolo-ocr`'s existing `src/yolo_ocr/dataset.py` COCO ->
   YOLO conversion CLI for layout-model dataset prep rather than
   re-implementing it.
@@ -32,3 +49,4 @@ Validation + Confidence Scoring -> Auto-Accept or Human Review Queue
   not vendored — `examples/sample_layout_coco.json` +
   `examples/sample_images/` (from `document-ai-yolo-ocr`) stay as the tiny
   synthetic fixture for demoing the conversion CLI without the real dataset.
+  `llm_vision` needs no training dataset at all.

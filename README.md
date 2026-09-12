@@ -39,13 +39,33 @@ gate. One app, one pipeline.
 ```text
 Dashboard (pick a feature or run the full pipeline) ->
 Document -> Classification (scanned vs digital, type) ->
-YOLO Layout Detection -> OCR (per detected region) -> Field Mapping (structured JSON) ->
-Validation + Confidence Scoring -> Auto-Accept or Human Review Queue
+  [layout_ocr: YOLO Layout Detection -> OCR (per detected region) -> Field Mapping]
+  [llm_vision: multimodal LLM reads the page, returns structured fields directly]
+  -> Validation + Confidence Scoring -> Auto-Accept or Human Review Queue
 ```
 
-A shared `document_core` layer (upload/storage, OCR backend wrapper, the
-structured-JSON schema) sits underneath 2 feature apps — one wrapping
-`document-ai-yolo-ocr`'s layout+OCR+field-mapping pipeline, one wrapping
+Extraction happens through one of two interchangeable engines, selected per
+document or per run:
+
+- **Custom-trained / generic-model pipeline** (`layout_ocr`) — YOLO layout
+  detection + OCR (per detected region, via `document_core.ocr`'s pluggable
+  backend — Tesseract today, PaddleOCR later) + field mapping to structured
+  JSON. Needs no per-document API call, runs fully offline/on-prem, but needs
+  a trained layout model.
+- **Multimodal LLM** (`llm_vision`, `document_core.extraction`) — one Claude
+  vision call reads the whole document image/PDF and returns structured
+  fields directly, skipping layout detection entirely. No training data, and
+  handles document types the layout model was never trained on, at the cost
+  of a per-document API call and self-reported (not calibrated) confidence.
+
+Both engines produce the exact same `document_core.schema.ExtractionResult`
+shape, so `classify_review`'s validation/confidence/review-routing stage
+(Phase 3) is engine-agnostic — it consumes whichever engine's output, unchanged.
+
+A shared `document_core` layer (upload/storage, the OCR backend wrapper, the
+extraction backend wrapper, the structured-JSON schema) sits underneath 2
+feature apps — one wrapping `document-ai-yolo-ocr`'s layout+OCR+field-mapping
+pipeline (optionally swapped for `llm_vision`), one wrapping
 `intelligent-document-processing`'s classify+validate+review pipeline —
 registered the same registry pattern used by this portfolio's other suites,
 plus a combined "full pipeline" mode that chains both.
@@ -54,6 +74,8 @@ plus a combined "full pipeline" mode that chains both.
 
 - Python, Django 5.x (feature-picker web app + job/review-queue history)
 - Ultralytics YOLO (layout detection), Tesseract or PaddleOCR (text extraction)
+- Anthropic API (`anthropic` SDK, Claude vision) for the `llm_vision`
+  direct-extraction backend — no layout model required
 - OpenCV, FastAPI-style validators for field/confidence rules
 - PostgreSQL in production, SQLite for local/dev (`DATABASE_URL` override)
 
@@ -62,23 +84,33 @@ plus a combined "full pipeline" mode that chains both.
 - **Layout + OCR extraction** (from `document-ai-yolo-ocr`): document layout
   detection, field-level detection, OCR text extraction, structured JSON
   output, invoice/contract parsing, table/field extraction
+- **Multimodal LLM extraction** (`document_core.extraction`'s `llm_vision`
+  backend): single Claude vision call, structured fields straight from the
+  page image/PDF, no layout model or training data needed — selectable as an
+  alternative engine wherever `layout_ocr` would otherwise run
 - **Classify + Review** (from `intelligent-document-processing`): document
   classification, PDF/scanned handling, validation rules, confidence scoring,
   human-review routing queue for low-confidence extractions
-- **Full pipeline**: chain the two — classify, run layout+OCR, validate/score,
-  route to review only when confidence is low
+- **Full pipeline**: chain the two — classify, run extraction (either
+  engine), validate/score, route to review only when confidence is low
 - Shared: one document upload path, per-user job/review history
 
 ## 5. Implementation Plan
 
 1. Phase 1: `document_core` shared app (upload/storage, OCR backend wrapper,
-   structured-JSON schema) + Django project skeleton with the dashboard shell
+   extraction backend wrapper — including the `llm_vision` multimodal-LLM
+   backend, `document_core/extraction.py` — structured-JSON schema) + Django
+   project skeleton with the dashboard shell
 2. Phase 2: Port `document-ai-yolo-ocr`'s layout-detection + OCR + field-mapping
-   flow into a feature app (reuse its existing dataset-prep CLI /
-   `src/yolo_ocr/dataset.py` conversion logic where it fits `document_core`)
+   flow into a feature app as the `layout_ocr` extraction backend (reuse its
+   existing dataset-prep CLI / `src/yolo_ocr/dataset.py` conversion logic
+   where it fits `document_core`); let the dashboard pick `layout_ocr` or
+   `llm_vision` per run
 3. Phase 3: Port `intelligent-document-processing`'s classifier + validation +
-   confidence scoring + review-queue flow into a second feature app
-4. Phase 4: Wire the "full pipeline" mode that chains both feature apps
+   confidence scoring + review-queue flow into a second feature app,
+   engine-agnostic over whichever extraction backend produced the fields
+4. Phase 4: Wire the "full pipeline" mode that chains classification ->
+   extraction (either engine) -> validation/review
 5. Phase 5: Archive the 2 original repos (banner + badge, move to
    `portfolio-archived-repos`) once parity is confirmed
 

@@ -1,4 +1,15 @@
 pydantic>=2.0
 pytesseract>=0.3.10
 Pillow>=10.0
+anthropic>=1.5.0,<2.0   # multimodal-LLM extraction backend (document_core/extraction.py)
+
+# Django web app (README.md Section 3/9)
+Django>=5.1,<6.0
+django-environ>=0.11
+whitenoise>=6.7
+psycopg[binary]>=3.2
+gunicorn>=22.0
+
+# Testing
 pytest>=8.0
+pytest-django>=4.9

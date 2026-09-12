@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Upload - Document AI Suite{% endblock %}
+{% block content %}
+  <h1>Upload a document</h1>
+  <form class="stack" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Upload</button>
+  </form>
+  <p><a href="{% url 'documents:list' %}">&larr; Back to my documents</a></p>
+{% endblock %}

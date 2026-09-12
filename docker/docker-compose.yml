@@ -1,0 +1,39 @@
+# Local multi-container dev stack (Postgres instead of SQLite, matching the
+# prod DB -- README.md Section 3). Run from the repo root:
+#   docker compose -f docker/docker-compose.yml up --build
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: document_ai_suite
+      POSTGRES_USER: document_ai_suite
+      POSTGRES_PASSWORD: document_ai_suite
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U document_ai_suite"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DJANGO_SECRET_KEY: dev-only-compose-secret
+      DJANGO_DEBUG: "True"
+      DJANGO_ALLOWED_HOSTS: "*"
+      DATABASE_URL: postgres://document_ai_suite:document_ai_suite@db:5432/document_ai_suite
+      DOCUMENT_STORE_ROOT: /app/data/documents
+    ports:
+      - "8000:8000"
+    volumes:
+      - documents_data:/app/data/documents
+
+volumes:
+  pgdata:
+  documents_data:

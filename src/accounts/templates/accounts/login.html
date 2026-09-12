@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Log in - Document AI Suite{% endblock %}
+{% block content %}
+  <h1>Log in</h1>
+  <form class="stack" method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Log in</button>
+  </form>
+  <p class="muted">No account? <a href="{% url 'accounts:signup' %}">Sign up</a></p>
+{% endblock %}
