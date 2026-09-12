@@ -1,0 +1,5 @@
+[project]
+name = "document-ai-suite"
+version = "0.1.0"
+description = "Document AI Suite: YOLO+OCR layout extraction and the universal classify/validate/review pipeline behind one feature picker"
+requires-python = ">=3.10"
