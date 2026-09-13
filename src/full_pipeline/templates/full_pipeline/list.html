@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Full pipeline - Document AI Suite{% endblock %}
+{% block content %}
+  <h1>Full pipeline</h1>
+  <p class="muted">
+    Pick one of your uploaded documents to run classify &rarr; extract &rarr;
+    validate/score in one pass.
+  </p>
+
+  {% if records %}
+    <table>
+      <thead>
+        <tr><th>Filename</th><th>Status</th><th>Uploaded</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for record in records %}
+          <tr>
+            <td>{{ record.filename }}</td>
+            <td><span class="status">{{ record.status }}</span></td>
+            <td>{{ record.uploaded_at }}</td>
+            <td><a href="{% url 'full_pipeline:run' doc_id=record.id %}">Run full pipeline</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">
+      No documents uploaded yet.
+      <a href="{% url 'documents:upload' %}">Upload one</a>.
+    </p>
+  {% endif %}
+{% endblock %}

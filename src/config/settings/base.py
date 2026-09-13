@@ -17,14 +17,16 @@ from pathlib import Path
 
 import environ
 
+from config.env import load_env_file
+
 # src/config/settings/base.py -> src/config/settings -> src/config -> src -> repo root
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 SRC_DIR = BASE_DIR / "src"
 
+# Blank values in `.env` are treated as unset so the documented "leave blank
+# for the default" actually holds -- see `config.env.load_env_file`.
+load_env_file(BASE_DIR / ".env")
 env = environ.Env()
-_env_file = BASE_DIR / ".env"
-if _env_file.exists():
-    environ.Env.read_env(str(_env_file))
 
 DEV_INSECURE_SECRET_KEY = "dev-insecure-secret-key-change-me"
 SECRET_KEY = env("DJANGO_SECRET_KEY", default=DEV_INSECURE_SECRET_KEY)
@@ -44,6 +46,7 @@ INSTALLED_APPS = [
     "documents",
     "layout_ocr",
     "classify_review",
+    "full_pipeline",
 ]
 
 MIDDLEWARE = [

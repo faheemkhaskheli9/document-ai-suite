@@ -87,5 +87,6 @@ register_feature(
             "extract, validate/score, and route to review only when "
             "confidence is low."
         ),
+        url_name="full_pipeline:list",
     )
 )

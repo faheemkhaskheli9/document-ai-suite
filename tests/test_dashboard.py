@@ -36,12 +36,14 @@ def test_home_links_available_feature_to_its_own_flow(client, user):
     assert reverse("documents:list") in content
 
 
-def test_home_only_documents_feature_is_open(client, user):
+def test_home_documents_and_full_pipeline_features_are_open(client, user):
     client.login(username="alice", password="s3cret-pass!")
     response = client.get(reverse("dashboard:home"))
 
     content = response.content.decode()
-    # Exactly one "Open" link (Documents) -- everything else is "Coming soon"
-    # until Phase 2/3/4 land.
-    assert content.count(">Open<") == 1
-    assert content.count("Coming soon") == 3
+    # Documents and (issue #10) Full pipeline have their own flow now;
+    # Layout + OCR and Classify + Review stay "Coming soon" -- neither has
+    # its own UI, they're only reachable through Documents/Full pipeline.
+    assert content.count(">Open<") == 2
+    assert content.count("Coming soon") == 2
+    assert reverse("full_pipeline:list") in content

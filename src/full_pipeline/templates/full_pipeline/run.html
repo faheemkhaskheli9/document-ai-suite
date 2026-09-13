@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Full pipeline - {{ record.filename }} - Document AI Suite{% endblock %}
+{% block content %}
+  <h1>Full pipeline: {{ record.filename }}</h1>
+
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Run full pipeline</button>
+  </form>
+
+  {% if result %}
+    <h2>1. Classification</h2>
+    {% if result.classification %}
+      <table>
+        <tr><th>Scanned</th><td>{{ result.classification.is_scanned }}</td></tr>
+        <tr><th>Document type</th><td>{{ result.classification.document_type|default:"-" }}</td></tr>
+        <tr><th>Confidence</th><td>{{ result.classification.confidence }}</td></tr>
+      </table>
+    {% else %}
+      <p class="muted">Classification failed: {{ result.stage_errors.classification }}</p>
+    {% endif %}
+
+    <h2>2. Extraction ({{ result.extraction_backend_key }})</h2>
+    {% if result.extraction %}
+      <table>
+        <tr><th>Field</th><th>Value</th><th>Confidence</th></tr>
+        {% for field in result.extraction.fields %}
+          <tr>
+            <td>{{ field.name }}</td>
+            <td>{{ field.value }}</td>
+            <td>{{ field.confidence }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3">No fields extracted.</td></tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      <p class="muted">Extraction failed: {{ result.stage_errors.extraction }}</p>
+    {% endif %}
+
+    <h2>3. Validation</h2>
+    <table>
+      <tr><th>Status</th><td>{{ result.validation.status }}</td></tr>
+      <tr><th>Overall confidence</th><td>{{ result.validation.overall_confidence }}</td></tr>
+      <tr><th>Failures</th><td>{{ result.validation.failures|join:", "|default:"-" }}</td></tr>
+    </table>
+  {% else %}
+    <p class="muted">The full pipeline hasn't run for this document yet.</p>
+  {% endif %}
+
+  <p><a href="{% url 'full_pipeline:list' %}">&larr; Back to full pipeline</a></p>
+{% endblock %}
