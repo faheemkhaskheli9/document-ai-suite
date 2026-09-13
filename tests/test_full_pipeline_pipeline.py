@@ -134,3 +134,75 @@ def test_low_confidence_result_needs_review(tmp_path, monkeypatch):
     result = run_full_pipeline("doc-1", path, "layout_ocr")
 
     assert result.validation.status == "needs_review"
+
+
+# -- contributing_stages() -- issue #11 --------------------------------------
+
+
+def test_contributing_stages_is_empty_when_both_stages_are_confident(tmp_path, monkeypatch):
+    path = tmp_path / "invoice.pdf"
+    path.write_bytes(b"%PDF-fake")
+    monkeypatch.setattr(
+        "full_pipeline.pipeline.DocumentClassifier.classify",
+        lambda self, p: _classification(confidence=0.9),
+    )
+    monkeypatch.setattr(
+        "full_pipeline.pipeline.extract_fields",
+        lambda backend_key, document_path, document_id: _extraction(document_id, confidence=0.9),
+    )
+
+    result = run_full_pipeline("doc-1", path, "layout_ocr")
+
+    assert result.contributing_stages() == []
+
+
+def test_contributing_stages_names_only_the_low_confidence_classification(tmp_path, monkeypatch):
+    path = tmp_path / "invoice.pdf"
+    path.write_bytes(b"%PDF-fake")
+    monkeypatch.setattr(
+        "full_pipeline.pipeline.DocumentClassifier.classify",
+        lambda self, p: _classification(confidence=0.2),
+    )
+    monkeypatch.setattr(
+        "full_pipeline.pipeline.extract_fields",
+        lambda backend_key, document_path, document_id: _extraction(document_id, confidence=0.9),
+    )
+
+    result = run_full_pipeline("doc-1", path, "layout_ocr")
+
+    assert result.contributing_stages() == [STAGE_CLASSIFICATION]
+
+
+def test_contributing_stages_names_only_the_low_confidence_extraction(tmp_path, monkeypatch):
+    path = tmp_path / "invoice.pdf"
+    path.write_bytes(b"%PDF-fake")
+    monkeypatch.setattr(
+        "full_pipeline.pipeline.DocumentClassifier.classify",
+        lambda self, p: _classification(confidence=0.9),
+    )
+    monkeypatch.setattr(
+        "full_pipeline.pipeline.extract_fields",
+        lambda backend_key, document_path, document_id: _extraction(document_id, confidence=0.2),
+    )
+
+    result = run_full_pipeline("doc-1", path, "layout_ocr")
+
+    assert result.contributing_stages() == [STAGE_EXTRACTION]
+
+
+def test_contributing_stages_includes_a_stage_that_failed_outright(tmp_path, monkeypatch):
+    path = tmp_path / "invoice.pdf"
+    path.write_bytes(b"%PDF-fake")
+
+    def _raise(self, p):
+        raise DocumentClassificationError("bad file")
+
+    monkeypatch.setattr("full_pipeline.pipeline.DocumentClassifier.classify", _raise)
+    monkeypatch.setattr(
+        "full_pipeline.pipeline.extract_fields",
+        lambda backend_key, document_path, document_id: _extraction(document_id, confidence=0.9),
+    )
+
+    result = run_full_pipeline("doc-1", path, "layout_ocr")
+
+    assert result.contributing_stages() == [STAGE_CLASSIFICATION]

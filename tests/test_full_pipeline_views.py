@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from django.test import override_settings
 from django.urls import reverse
 
+from classify_review.classifier import ClassificationResult
 from document_core.schema import ExtractedField, ExtractionResult
 
 pytestmark = pytest.mark.django_db
@@ -94,3 +95,30 @@ def test_a_user_cannot_run_the_pipeline_on_another_users_document(
     client.force_login(other_user)
     response = client.get(reverse("full_pipeline:run", args=[uploaded_doc]))
     assert response.status_code == 404
+
+
+def test_low_confidence_result_shows_the_review_routing_message(
+    client, user, uploaded_doc, monkeypatch
+):
+    monkeypatch.setattr(
+        "full_pipeline.pipeline.DocumentClassifier.classify",
+        lambda self, p: ClassificationResult(is_scanned=False, document_type="invoice", confidence=0.9),
+    )
+    _stub_extract_fields(monkeypatch, confidence=0.2)
+    response = client.post(
+        reverse("full_pipeline:run", args=[uploaded_doc]), {"backend_key": "layout_ocr"}, follow=True
+    )
+
+    assert b"Routed to human review" in response.content
+    assert b"Contributing stage(s): extraction" in response.content
+
+
+def test_high_confidence_result_does_not_show_the_review_routing_message(
+    client, user, uploaded_doc, monkeypatch
+):
+    _stub_extract_fields(monkeypatch, confidence=0.95)
+    response = client.post(
+        reverse("full_pipeline:run", args=[uploaded_doc]), {"backend_key": "layout_ocr"}, follow=True
+    )
+
+    assert b"Routed to human review" not in response.content

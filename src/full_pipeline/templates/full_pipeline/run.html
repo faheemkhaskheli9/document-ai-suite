@@ -45,6 +45,13 @@
       <tr><th>Overall confidence</th><td>{{ result.validation.overall_confidence }}</td></tr>
       <tr><th>Failures</th><td>{{ result.validation.failures|join:", "|default:"-" }}</td></tr>
     </table>
+
+    {% if result.validation.status == "needs_review" %}
+      <p class="badge soon">
+        Routed to human review &mdash; same queue Classify + Review uses.
+        Contributing stage(s): {{ result.contributing_stages|join:", "|default:"-" }}
+      </p>
+    {% endif %}
   {% else %}
     <p class="muted">The full pipeline hasn't run for this document yet.</p>
   {% endif %}

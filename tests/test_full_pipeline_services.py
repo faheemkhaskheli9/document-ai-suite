@@ -5,6 +5,7 @@ import pytest
 from django.test import override_settings
 
 from classify_review.classifier import ClassificationResult
+from classify_review.queue import list_review_queue
 from document_core.schema import ExtractedField, ExtractionResult
 from documents.services import get_document_store
 from full_pipeline.services import get_persisted_pipeline_result, run_pipeline_and_persist
@@ -63,3 +64,39 @@ def test_get_persisted_pipeline_result_is_none_before_a_run(store_root):
 def test_run_pipeline_unknown_document_raises_keyerror(store_root):
     with pytest.raises(KeyError, match="No such document"):
         run_pipeline_and_persist("does-not-exist", "layout_ocr")
+
+
+# -- review-queue routing -- issue #11 ---------------------------------------
+
+
+def test_low_confidence_pipeline_result_is_routed_to_the_shared_review_queue(store_root, monkeypatch):
+    _stub_pipeline(monkeypatch, status="needs_review")
+    store = get_document_store()
+    record = store.store(b"%PDF-fake", "invoice.pdf", owner="alice")
+
+    result = run_pipeline_and_persist(record.id, "layout_ocr")
+
+    assert result.validation.status == "needs_review"
+    queue_ids = {item.document.id for item in list_review_queue(store)}
+    assert record.id in queue_ids
+
+
+def test_high_confidence_pipeline_result_is_not_routed_to_the_review_queue(store_root, monkeypatch):
+    _stub_pipeline(monkeypatch, status="auto_accepted")
+    store = get_document_store()
+    record = store.store(b"%PDF-fake", "invoice.pdf", owner="alice")
+
+    run_pipeline_and_persist(record.id, "layout_ocr")
+
+    assert list_review_queue(store) == []
+
+
+def test_persisted_artifact_records_which_stage_contributed(store_root, monkeypatch):
+    _stub_pipeline(monkeypatch, status="needs_review")
+    store = get_document_store()
+    record = store.store(b"%PDF-fake", "invoice.pdf", owner="alice")
+
+    run_pipeline_and_persist(record.id, "layout_ocr")
+
+    persisted = get_persisted_pipeline_result(record.id)
+    assert persisted["contributing_stages"] != []

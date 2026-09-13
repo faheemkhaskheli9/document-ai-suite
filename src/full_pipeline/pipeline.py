@@ -29,7 +29,7 @@ from classify_review.classifier import (
     DocumentClassificationError,
     DocumentClassifier,
 )
-from classify_review.validation import ValidationResult, validate
+from classify_review.validation import AUTO_ACCEPT_CONFIDENCE_THRESHOLD, ValidationResult, validate
 from document_core.extraction import ExtractionBackendError, extract_fields
 from document_core.schema import ExtractionResult
 
@@ -55,6 +55,40 @@ class PipelineResult:
     extraction: ExtractionResult | None
     validation: ValidationResult
     stage_errors: dict[str, str] = field(default_factory=dict)
+
+    def contributing_stages(self) -> list[str]:
+        """Which stage(s) pulled the overall confidence down -- issue #11
+        acceptance criterion: "Reviewer sees which pipeline stage(s)
+        contributed to the low confidence."
+
+        A stage "contributes" if it failed outright (a missing signal is the
+        strongest possible drag on `classify_review.validation._score`'s
+        mean) or it ran but scored below the same auto-accept threshold
+        `validate()` itself uses. Meaningful regardless of the overall
+        `validation.status` -- callers routing to a review UI should check
+        `validation.status == "needs_review"` first (a value here doesn't by
+        itself mean the document needs review; a `status="failed"` document
+        skips this signal entirely in favor of `validation.failures`).
+        """
+        stages: list[str] = []
+
+        if STAGE_CLASSIFICATION in self.stage_errors or self.classification is None:
+            stages.append(STAGE_CLASSIFICATION)
+        elif self.classification.confidence < AUTO_ACCEPT_CONFIDENCE_THRESHOLD:
+            stages.append(STAGE_CLASSIFICATION)
+
+        if STAGE_EXTRACTION in self.stage_errors or self.extraction is None:
+            stages.append(STAGE_EXTRACTION)
+        else:
+            confidence = self.extraction.overall_confidence
+            if confidence is None and self.extraction.fields:
+                confidence = sum(f.confidence for f in self.extraction.fields) / len(
+                    self.extraction.fields
+                )
+            if confidence is None or confidence < AUTO_ACCEPT_CONFIDENCE_THRESHOLD:
+                stages.append(STAGE_EXTRACTION)
+
+        return stages
 
 
 def run_full_pipeline(
