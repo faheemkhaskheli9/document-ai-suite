@@ -61,6 +61,17 @@ def test_list_for_owner_only_returns_that_owners_documents(store):
     assert {d.filename for d in alice_docs} == {"a.pdf", "c.pdf"}
 
 
+def test_list_all_returns_documents_from_every_owner(store):
+    store.store(b"one", "a.pdf", owner="alice")
+    store.store(b"two", "b.pdf", owner="bob")
+
+    assert {d.filename for d in store.list_all()} == {"a.pdf", "b.pdf"}
+
+
+def test_list_all_on_empty_store_returns_empty_list(store):
+    assert store.list_all() == []
+
+
 def test_set_status_updates_and_persists(store):
     record = store.store(b"content", "a.pdf", owner="alice")
     updated = store.set_status(record.id, "processing")

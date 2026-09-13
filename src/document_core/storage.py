@@ -114,13 +114,18 @@ class DocumentStore:
         data = json.loads(record_path.read_text(encoding="utf-8"))
         return DocumentRecord(**data)
 
-    def list_for_owner(self, owner: str) -> list[DocumentRecord]:
+    def list_all(self) -> list[DocumentRecord]:
+        """Every stored document, regardless of owner -- for cross-owner
+        consumers like `classify_review`'s human-review queue, where a
+        reviewer isn't necessarily the document's uploader."""
         records = []
         for record_path in sorted(self.root.glob("*/record.json")):
             data = json.loads(record_path.read_text(encoding="utf-8"))
-            if data.get("owner") == owner:
-                records.append(DocumentRecord(**data))
+            records.append(DocumentRecord(**data))
         return records
+
+    def list_for_owner(self, owner: str) -> list[DocumentRecord]:
+        return [record for record in self.list_all() if record.owner == owner]
 
     def set_status(self, doc_id: str, status: DocumentStoreStatus) -> DocumentRecord:
         record = self.get(doc_id)

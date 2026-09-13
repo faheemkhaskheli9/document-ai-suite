@@ -45,3 +45,26 @@ def get_persisted_validation(doc_id: str) -> ValidationResult | None:
     if data is None:
         return None
     return ValidationResult.from_dict(data)
+
+
+def overwrite_validation_status(doc_id: str, status: str) -> ValidationResult:
+    """Overwrite a persisted validation result's `status` in place (a human
+    reviewer's decision, not a recomputed score) -- used by
+    `classify_review.queue`'s accept/reject actions (issue #9).
+
+    Raises `KeyError` if `doc_id` has no persisted validation result yet --
+    a document can't be reviewed before it's been validated at least once.
+    """
+    existing = get_persisted_validation(doc_id)
+    if existing is None:
+        raise KeyError(f"No validation result persisted for document: {doc_id}")
+
+    updated = ValidationResult(
+        passed=existing.passed,
+        overall_confidence=existing.overall_confidence,
+        status=status,
+        failures=existing.failures,
+    )
+    store = get_document_store()
+    store.save_artifact(doc_id, VALIDATION_ARTIFACT_NAME, updated.to_dict())
+    return updated
