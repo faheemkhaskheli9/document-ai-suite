@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "dashboard",
     "documents",
     "layout_ocr",
+    "classify_review",
 ]
 
 MIDDLEWARE = [
